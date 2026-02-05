@@ -239,7 +239,11 @@ export class Orchestrator {
         tools,
         maxSteps: 5,
       });
-      console.log(result.response.messages);
+      for (let r of result.response.messages) {
+        for (let c of r.content) {
+          console.log('Orchestrator message content:', c);
+        }
+      }
 
       const response = result.text || 'I apologize, but I was unable to generate a response.';
 
