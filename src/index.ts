@@ -227,12 +227,16 @@ async function interactiveMode(): Promise<void> {
     }
   };
 
+  console.log(shouldExit, "shouldExit initial value");
+
   // Main REPL loop - continues until explicit quit
   while (!shouldExit) {
     try {
       const input = await new Promise<string>((resolve, reject) => {
-        rl.question(chalk.cyan('You: '), resolve);
-        rl.once('close', () => reject(new Error('readline closed')));
+        rl.question(chalk.cyan('You: '), (response: string) => {
+          console.log(response);
+        });
+        //rl.once('close', () => reject(new Error('readline closed')));
         rl.once('error', reject);
       });
 
