@@ -1,0 +1,35 @@
+models:
+  orchestrator:
+    provider: openrouter
+    model: anthropic/claude-sonnet-4
+
+  local-fast:
+    provider: ollama
+    model: qwen3:14b 
+
+  local-code:
+    provider: ollama
+    model: qwen2.5-coder:7b
+
+  cloud-smart:
+    provider: openrouter
+    model: anthropic/claude-sonnet-4
+
+skills:
+  code:
+    model: local-code
+  research:
+    model: local-fast
+  shell:
+    model: local-code
+  files:
+    model: local-fast
+
+# API keys (use environment variables in production)
+keys:
+  openrouter: ${OPENROUTER_API_KEY}
+  tavily: ${TAVILY_API_KEY}
+
+# Ollama settings
+ollama:
+  host: ${OLLAMA_HOST} 
