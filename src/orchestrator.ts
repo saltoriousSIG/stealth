@@ -197,16 +197,11 @@ export class Orchestrator {
       const config = loadConfig();
       const modelConfig = getOrchestratorModelConfig(config);
       const model = getModel(modelConfig);
-
-      console.log(this.skills, "loaded skills");
-
       const skillsSummary = getSkillsSummary(this.skills);
       const systemPrompt = buildOrchestratorSystemPrompt(this.identity, skillsSummary);
-      console.log('Orchestrator system prompt:', systemPrompt);
 
       // Build user prompt with conversation history
       const history = formatHistoryForContext(5);
-      console.log(history);
       const userPrompt = history
         ? `Previous conversation:\n${history}\n\nCurrent message: ${userMessage}`
         : userMessage;

@@ -11,10 +11,12 @@ const TEMPLATES_DIR = join(process.cwd(), 'templates');
 const MEMORY_DIR = join(process.cwd(), 'memory');
 
 /**
- * Parses command line arguments using Bun.argv
+ * Parses command line arguments
  */
 function parseArgs(): { command: string; args: string[] } {
+  console.log(process.argv);
   const args = process.argv.slice(2);
+  console.log(args);
   const command = args[0] || 'interactive';
   const restArgs = args.slice(1);
   return { command, args: restArgs };
@@ -223,7 +225,7 @@ function showHelp(): void {
   console.log(chalk.white('Usage:'));
   console.log(chalk.white('  jarvis                    Interactive mode (REPL)'));
   console.log(chalk.white('  jarvis chat "<message>"   Send a single message'));
-  console.log(chalk.white('  jarvis init               Initialize identity files'));
+r console.log(chalk.white('  jarvis init               Initialize identity files'));
   console.log(chalk.white('  jarvis skills             List available skills'));
   console.log(chalk.white('  jarvis help               Show this help\n'));
   console.log(chalk.gray('Examples:'));
