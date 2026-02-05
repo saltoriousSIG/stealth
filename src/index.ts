@@ -239,7 +239,8 @@ async function interactiveMode(): Promise<void> {
       });
 
       await handleInput(input);
-    } catch {
+    } catch(e) {
+      console.log(e)
       // Readline closed (Ctrl+C, Ctrl+D, or piped input ended)
       if (shouldExit) break;
 
