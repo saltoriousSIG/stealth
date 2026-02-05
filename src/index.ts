@@ -233,9 +233,7 @@ async function interactiveMode(): Promise<void> {
   while (!shouldExit) {
     try {
       const input = await new Promise<string>((resolve, reject) => {
-        rl.question(chalk.cyan('You: '), (response: string) => {
-          console.log(response);
-        });
+        rl.question(chalk.cyan('You: '), resolve);
         //rl.once('close', () => reject(new Error('readline closed')));
         rl.once('error', reject);
       });
