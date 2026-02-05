@@ -40,13 +40,14 @@ function parseSkillMarkdown(content: string, skillName: string): Partial<Skill> 
   if (modelMatch) {
     const modelSection = modelMatch[1].trim();
 
-    // Check for "Uses: model-name" syntax
+    // Check for "Uses: model-name" syntax (this is a reference to a named model in config)
     const usesMatch = modelSection.match(/Uses:\s*(\S+)/i);
     if (usesMatch) {
-      skill.model = { provider: 'ollama', model: usesMatch[1] } as ModelConfig;
+      // Store as string reference to be resolved later via config
+      skill.model = usesMatch[1] as unknown as ModelConfig;
     }
 
-    // Check for explicit provider/model
+    // Check for explicit provider/model (inline definition)
     const providerMatch = modelSection.match(/provider:\s*(\S+)/i);
     const modelNameMatch = modelSection.match(/model:\s*(\S+)/i);
     if (providerMatch && modelNameMatch) {
@@ -159,6 +160,7 @@ export async function loadSkill(skillDir: string): Promise<Skill | null> {
  */
 export async function loadAllSkills(): Promise<Map<string, Skill>> {
   const skills = new Map<string, Skill>();
+  console.log('Loading skills from', SKILLS_DIR);
 
   if (!existsSync(SKILLS_DIR)) {
     console.warn('No skills directory found');
