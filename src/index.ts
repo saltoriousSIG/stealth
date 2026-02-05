@@ -1,10 +1,11 @@
 import 'dotenv/config';
-import { createInterface } from 'readline';
+import { createInterface, Interface } from 'readline';
 import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'fs';
+import { open } from 'fs/promises';
 import { join } from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { Orchestrator, getOrchestrator } from './orchestrator.js';
+import { getOrchestrator } from './orchestrator.js';
 import { loadConversation, saveConversation, clearConversation } from './memory.js';
 
 const TEMPLATES_DIR = join(process.cwd(), 'templates');
@@ -14,9 +15,7 @@ const MEMORY_DIR = join(process.cwd(), 'memory');
  * Parses command line arguments
  */
 function parseArgs(): { command: string; args: string[] } {
-  console.log(process.argv);
   const args = process.argv.slice(2);
-  console.log(args);
   const command = args[0] || 'interactive';
   const restArgs = args.slice(1);
   return { command, args: restArgs };
@@ -120,6 +119,39 @@ async function chatCommand(message: string): Promise<void> {
 }
 
 /**
+ * Creates a readline interface from /dev/tty for direct terminal access
+ * Returns null if no TTY is available
+ */
+async function createTtyReadline(): Promise<Interface | null> {
+  try {
+    const handle = await open('/dev/tty', 'r');
+    const stream = handle.createReadStream();
+    const rl = createInterface({
+      input: stream,
+      output: process.stdout,
+      terminal: true,
+    });
+    // Attach error handler to prevent unhandled error events
+    stream.on('error', () => {
+      rl.close();
+    });
+    return rl;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Creates a readline interface from stdin
+ */
+function createStdinReadline(): Interface {
+  return createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+}
+
+/**
  * Interactive REPL mode
  */
 async function interactiveMode(): Promise<void> {
@@ -133,97 +165,95 @@ async function interactiveMode(): Promise<void> {
   // Load previous conversation
   loadConversation();
 
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
+  let rl = createStdinReadline();
   const orchestrator = getOrchestrator();
+  let shouldExit = false;
 
-  // Return a promise that only resolves when the user quits
-  return new Promise<void>((resolve) => {
-    let closed = false;
+  const handleInput = async (input: string): Promise<void> => {
+    const trimmed = input.trim();
 
-    const prompt = (): void => {
-      if (closed) return;
-      rl.question(chalk.cyan('You: '), async (input) => {
-        if (closed) return;
-        const trimmed = input.trim();
+    // Handle commands
+    if (trimmed.startsWith('/')) {
+      const cmd = trimmed.slice(1).toLowerCase();
 
-        // Handle commands
-        if (trimmed.startsWith('/')) {
-          const cmd = trimmed.slice(1).toLowerCase();
-
-          switch (cmd) {
-            case 'quit':
-            case 'exit':
-            case 'q':
-              saveConversation();
-              console.log(chalk.blue('\nGoodbye!'));
-              rl.close();
-              resolve();
-              return;
-
-            case 'clear':
-              clearConversation();
-              console.log(chalk.green('Conversation cleared.\n'));
-              prompt();
-              return;
-
-            case 'skills':
-              await skillsCommand();
-              prompt();
-              return;
-
-            case 'help':
-              console.log(chalk.gray('\nCommands:'));
-              console.log(chalk.gray('  /quit    - Exit'));
-              console.log(chalk.gray('  /clear   - Clear conversation history'));
-              console.log(chalk.gray('  /skills  - List available skills'));
-              console.log(chalk.gray('  /help    - Show this help\n'));
-              prompt();
-              return;
-
-            default:
-              console.log(chalk.yellow(`Unknown command: ${cmd}\n`));
-              prompt();
-              return;
-          }
-        }
-
-        // Skip empty input
-        if (!trimmed) {
-          prompt();
+      switch (cmd) {
+        case 'quit':
+        case 'exit':
+        case 'q':
+          shouldExit = true;
+          saveConversation();
+          console.log(chalk.blue('\nGoodbye!'));
+          rl.close();
           return;
-        }
 
-        // Process the message
-        const spinner = ora('Thinking...').start();
+        case 'clear':
+          clearConversation();
+          console.log(chalk.green('Conversation cleared.\n'));
+          return;
 
-        try {
-          const response = await orchestrator.process(trimmed);
-          spinner.stop();
-          console.log(chalk.green('\nJarvis:'), response, '\n');
-        } catch (error) {
-          spinner.fail('Error');
-          console.error(chalk.red(error instanceof Error ? error.message : String(error)), '\n');
-        }
+        case 'skills':
+          await skillsCommand();
+          return;
 
-        prompt();
+        case 'help':
+          console.log(chalk.gray('\nCommands:'));
+          console.log(chalk.gray('  /quit    - Exit'));
+          console.log(chalk.gray('  /clear   - Clear conversation history'));
+          console.log(chalk.gray('  /skills  - List available skills'));
+          console.log(chalk.gray('  /help    - Show this help\n'));
+          return;
+
+        default:
+          console.log(chalk.yellow(`Unknown command: ${cmd}\n`));
+          return;
+      }
+    }
+
+    // Skip empty input
+    if (!trimmed) {
+      return;
+    }
+
+    // Process the message
+    const spinner = ora('Thinking...').start();
+
+    try {
+      const response = await orchestrator.process(trimmed);
+      spinner.stop();
+      console.log(chalk.green('\nJarvis:'), response, '\n');
+    } catch (error) {
+      spinner.fail('Error');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)), '\n');
+    }
+  };
+
+  // Main REPL loop - continues until explicit quit
+  while (!shouldExit) {
+    try {
+      const input = await new Promise<string>((resolve, reject) => {
+        rl.question(chalk.cyan('You: '), resolve);
+        rl.once('close', () => reject(new Error('readline closed')));
+        rl.once('error', reject);
       });
-    };
 
-    // Handle Ctrl+C gracefully
-    rl.on('close', () => {
-      if (closed) return;
-      closed = true;
-      saveConversation();
-      console.log(chalk.blue('\nGoodbye!'));
-      resolve();
-    });
+      await handleInput(input);
+    } catch {
+      // Readline closed (Ctrl+C, Ctrl+D, or piped input ended)
+      if (shouldExit) break;
 
-    prompt();
-  });
+      // Try to switch to /dev/tty for continued terminal input
+      const ttyRl = await createTtyReadline();
+      if (ttyRl) {
+        rl = ttyRl;
+        console.log(''); // Newline after piped input
+      } else {
+        // No TTY available, exit gracefully
+        shouldExit = true;
+        saveConversation();
+        console.log(chalk.blue('\nGoodbye!'));
+      }
+    }
+  }
 }
 
 /**
