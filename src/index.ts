@@ -8,18 +8,13 @@ const rl = readline.createInterface({
 });
 
 async function main() {
-  rl.question("Enter your command: ", async (command) => {
+  rl.on("line", async (command) => {
     console.log(command);
     try {
     } catch (error) {
     } finally {
       rl.close();
     }
-  });
-
-  process.stdin.on("data", async (data) => {
-    const command = data.toString().trim();
-    console.log(command);
   });
 }
 
