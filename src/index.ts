@@ -140,81 +140,84 @@ async function interactiveMode(): Promise<void> {
 
   const orchestrator = getOrchestrator();
 
-  const prompt = (): void => {
-    rl.question(chalk.cyan('You: '), async (input) => {
-      const trimmed = input.trim();
+  // Return a promise that only resolves when the user quits
+  return new Promise<void>((resolve) => {
+    const prompt = (): void => {
+      rl.question(chalk.cyan('You: '), async (input) => {
+        const trimmed = input.trim();
 
-      // Handle commands
-      if (trimmed.startsWith('/')) {
-        const cmd = trimmed.slice(1).toLowerCase();
+        // Handle commands
+        if (trimmed.startsWith('/')) {
+          const cmd = trimmed.slice(1).toLowerCase();
 
-        switch (cmd) {
-          case 'quit':
-          case 'exit':
-          case 'q':
-            saveConversation();
-            console.log(chalk.blue('\nGoodbye!'));
-            rl.close();
-            process.exit(0);
-            break;
+          switch (cmd) {
+            case 'quit':
+            case 'exit':
+            case 'q':
+              saveConversation();
+              console.log(chalk.blue('\nGoodbye!'));
+              rl.close();
+              resolve();
+              return;
 
-          case 'clear':
-            clearConversation();
-            console.log(chalk.green('Conversation cleared.\n'));
-            prompt();
-            break;
+            case 'clear':
+              clearConversation();
+              console.log(chalk.green('Conversation cleared.\n'));
+              prompt();
+              return;
 
-          case 'skills':
-            await skillsCommand();
-            prompt();
-            break;
+            case 'skills':
+              await skillsCommand();
+              prompt();
+              return;
 
-          case 'help':
-            console.log(chalk.gray('\nCommands:'));
-            console.log(chalk.gray('  /quit    - Exit'));
-            console.log(chalk.gray('  /clear   - Clear conversation history'));
-            console.log(chalk.gray('  /skills  - List available skills'));
-            console.log(chalk.gray('  /help    - Show this help\n'));
-            prompt();
-            break;
+            case 'help':
+              console.log(chalk.gray('\nCommands:'));
+              console.log(chalk.gray('  /quit    - Exit'));
+              console.log(chalk.gray('  /clear   - Clear conversation history'));
+              console.log(chalk.gray('  /skills  - List available skills'));
+              console.log(chalk.gray('  /help    - Show this help\n'));
+              prompt();
+              return;
 
-          default:
-            console.log(chalk.yellow(`Unknown command: ${cmd}\n`));
-            prompt();
+            default:
+              console.log(chalk.yellow(`Unknown command: ${cmd}\n`));
+              prompt();
+              return;
+          }
         }
-        return;
-      }
 
-      // Skip empty input
-      if (!trimmed) {
+        // Skip empty input
+        if (!trimmed) {
+          prompt();
+          return;
+        }
+
+        // Process the message
+        const spinner = ora('Thinking...').start();
+
+        try {
+          const response = await orchestrator.process(trimmed);
+          spinner.stop();
+          console.log(chalk.green('\nJarvis:'), response, '\n');
+        } catch (error) {
+          spinner.fail('Error');
+          console.error(chalk.red(error instanceof Error ? error.message : String(error)), '\n');
+        }
+
         prompt();
-        return;
-      }
+      });
+    };
 
-      // Process the message
-      const spinner = ora('Thinking...').start();
-
-      try {
-        const response = await orchestrator.process(trimmed);
-        spinner.stop();
-        console.log(chalk.green('\nJarvis:'), response, '\n');
-      } catch (error) {
-        spinner.fail('Error');
-        console.error(chalk.red(error instanceof Error ? error.message : String(error)), '\n');
-      }
-
-      prompt();
+    // Handle Ctrl+C gracefully
+    rl.on('close', () => {
+      saveConversation();
+      console.log(chalk.blue('\nGoodbye!'));
+      resolve();
     });
-  };
 
-  // Handle Ctrl+C gracefully
-  rl.on('close', () => {
-    saveConversation();
-    console.log(chalk.blue('\nGoodbye!'));
-    process.exit(0);
+    prompt();
   });
-
-  prompt();
 }
 
 /**
@@ -229,9 +232,9 @@ function showHelp(): void {
   console.log(chalk.white('  jarvis skills             List available skills'));
   console.log(chalk.white('  jarvis help               Show this help\n'));
   console.log(chalk.gray('Examples:'));
-  console.log(chalk.gray('  npx tsx src/index.ts'));
-  console.log(chalk.gray('  npx tsx src/index.ts chat "What can you do?"'));
-  console.log(chalk.gray('  npx tsx src/index.ts init'));
+  console.log(chalk.gray('  npm run jarvis'));
+  console.log(chalk.gray('  npm run jarvis -- chat "What can you do?"'));
+  console.log(chalk.gray('  npm run jarvis -- init'));
 }
 
 /**

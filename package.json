@@ -4,7 +4,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "start": "npx tsx src/index.ts",
+    "jarvis": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
