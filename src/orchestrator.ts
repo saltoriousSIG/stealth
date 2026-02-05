@@ -195,8 +195,11 @@ export class Orchestrator {
 
     try {
       const config = loadConfig();
+      console.log('Orchestrator config:', config);
       const modelConfig = getOrchestratorModelConfig(config);
+      console.log('Orchestrator model config:', modelConfig);
       const model = getModel(modelConfig);
+      console.log('Using model:', modelConfig.provider, modelConfig.model);
 
       const skillsSummary = getSkillsSummary(this.skills);
       const systemPrompt = buildOrchestratorSystemPrompt(this.identity, skillsSummary);
@@ -236,6 +239,7 @@ export class Orchestrator {
         tools,
         maxSteps: 5,
       });
+      console.log(result);
 
       const response = result.text || 'I apologize, but I was unable to generate a response.';
 
@@ -244,6 +248,7 @@ export class Orchestrator {
 
       return response;
     } catch (error) {
+      console.log(error);
       const errorMessage = `I encountered an error: ${error instanceof Error ? error.message : String(error)}`;
       addMessage({ role: 'assistant', content: errorMessage });
       return errorMessage;
