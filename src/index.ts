@@ -142,8 +142,12 @@ async function interactiveMode(): Promise<void> {
 
   // Return a promise that only resolves when the user quits
   return new Promise<void>((resolve) => {
+    let closed = false;
+
     const prompt = (): void => {
+      if (closed) return;
       rl.question(chalk.cyan('You: '), async (input) => {
+        if (closed) return;
         const trimmed = input.trim();
 
         // Handle commands
@@ -211,6 +215,8 @@ async function interactiveMode(): Promise<void> {
 
     // Handle Ctrl+C gracefully
     rl.on('close', () => {
+      if (closed) return;
+      closed = true;
       saveConversation();
       console.log(chalk.blue('\nGoodbye!'));
       resolve();
