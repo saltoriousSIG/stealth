@@ -195,17 +195,18 @@ export class Orchestrator {
 
     try {
       const config = loadConfig();
-      console.log('Orchestrator config:', config);
       const modelConfig = getOrchestratorModelConfig(config);
-      console.log('Orchestrator model config:', modelConfig);
       const model = getModel(modelConfig);
-      console.log('Using model:', modelConfig.provider, modelConfig.model);
+
+      console.log(this.skills, "loaded skills");
 
       const skillsSummary = getSkillsSummary(this.skills);
       const systemPrompt = buildOrchestratorSystemPrompt(this.identity, skillsSummary);
+      console.log('Orchestrator system prompt:', systemPrompt);
 
       // Build user prompt with conversation history
       const history = formatHistoryForContext(5);
+      console.log(history);
       const userPrompt = history
         ? `Previous conversation:\n${history}\n\nCurrent message: ${userMessage}`
         : userMessage;
