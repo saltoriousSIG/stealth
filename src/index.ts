@@ -225,7 +225,7 @@ function showHelp(): void {
   console.log(chalk.white('Usage:'));
   console.log(chalk.white('  jarvis                    Interactive mode (REPL)'));
   console.log(chalk.white('  jarvis chat "<message>"   Send a single message'));
-r console.log(chalk.white('  jarvis init               Initialize identity files'));
+  console.log(chalk.white('  jarvis init               Initialize identity files'));
   console.log(chalk.white('  jarvis skills             List available skills'));
   console.log(chalk.white('  jarvis help               Show this help\n'));
   console.log(chalk.gray('Examples:'));

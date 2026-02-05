@@ -197,6 +197,7 @@ export class Orchestrator {
       const config = loadConfig();
       const modelConfig = getOrchestratorModelConfig(config);
       const model = getModel(modelConfig);
+
       const skillsSummary = getSkillsSummary(this.skills);
       const systemPrompt = buildOrchestratorSystemPrompt(this.identity, skillsSummary);
 
