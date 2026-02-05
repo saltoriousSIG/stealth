@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createInterface } from 'readline';
 import { existsSync, mkdirSync, copyFileSync, readdirSync } from 'fs';
 import { join } from 'path';
