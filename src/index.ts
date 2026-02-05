@@ -14,11 +14,6 @@ async function main() {
     } catch (error) {
     } 
   });
-
-  process.stdin.on("data", async (data) => {
-    const command = data.toString().trim();
-    console.log(command);
-  });
 }
 
 main().catch((error) => {
