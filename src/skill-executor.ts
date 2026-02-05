@@ -54,7 +54,7 @@ function buildSkillUserPrompt(
 /**
  * Converts our Tool type to Vercel AI SDK tool format
  */
-function convertToolsToAISDK(tools: Tool[]): Record<string, unknown> {
+export function convertToolsToAISDK(tools: Tool[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const t of tools) {

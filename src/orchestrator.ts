@@ -7,7 +7,8 @@ import type { Identity, Skill, Message, Action, OrchestratorPlan } from './types
 import { loadConfig, getOrchestratorModelConfig } from './config.js';
 import { getModel } from './providers/index.js';
 import { loadAllSkills, getSkillsSummary } from './skill-loader.js';
-import { executeSkill } from './skill-executor.js';
+import { executeSkill, convertToolsToAISDK } from './skill-executor.js';
+import { getTools } from './tools/index.js';
 import {
   addMessage,
   getConversationHistory,
@@ -254,6 +255,46 @@ export class Orchestrator {
       addMessage({ role: 'assistant', content: errorMessage });
       return errorMessage;
     }
+  }
+
+  /**
+   * Runs the first-time setup flow using the LLM and file tools
+   */
+  async runSetup(userDescription: string): Promise<void> {
+    const config = loadConfig();
+    const modelConfig = getOrchestratorModelConfig(config);
+    const model = getModel(modelConfig);
+
+    const fileTools = getTools(['readFile', 'writeFile']);
+    const aiTools = convertToolsToAISDK(fileTools);
+
+    const setupPrompt = `The user wants to set up their personal AI assistant. They described who they want the bot to be:
+
+"${userDescription}"
+
+Your job is to create three personalized identity files for this assistant based on the user's description.
+
+First, read the template files to understand the expected structure and format:
+- templates/SOUL.md (personality, tone, style)
+- templates/BRAIN.md (knowledge, reasoning patterns)
+- templates/IMPERATIVE.md (operating principles, priorities)
+
+Then write personalized versions based on the user's description to:
+- memory/SOUL.md
+- memory/BRAIN.md
+- memory/IMPERATIVE.md
+
+Each file should be thoughtfully crafted to reflect the user's desired personality and behavior. Keep the same general structure as the templates but make the content specific and personalized.`;
+
+    await generateText({
+      model,
+      prompt: setupPrompt,
+      tools: aiTools as Parameters<typeof generateText>[0]['tools'],
+      maxSteps: 10,
+    });
+
+    // Reload identity with the newly generated files
+    this.identity = loadIdentity();
   }
 
   /**
