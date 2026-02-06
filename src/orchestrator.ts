@@ -153,7 +153,9 @@ export class Orchestrator {
 
       return response;
     } catch (err) {
+      console.log(err);
       const msg = `Error: ${err instanceof Error ? err.message : String(err)}`;
+      console.log(msg);
       addMessage({ role: 'assistant', content: msg });
       return msg;
     }
