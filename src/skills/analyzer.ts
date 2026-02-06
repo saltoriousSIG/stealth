@@ -42,21 +42,21 @@ Return: ["tool1", "tool2"]
 If a needed tool doesn't exist, prefix with "NEW:" like "NEW:toolName".`,
         maxTokens: 256,
       });
-      console.log(result);
+      console.log(result.response.messages);
 
-      const parsed = JSON.parse(result.text.trim());
-      if (!Array.isArray(parsed)) continue;
+      //const parsed = JSON.parse(result.text.trim());
+      //if (!Array.isArray(parsed)) continue;
 
-      const existing = parsed.filter((t: string) => !t.startsWith('NEW:'));
-      const missing = parsed.filter((t: string) => t.startsWith('NEW:')).map((t: string) => t.replace('NEW:', ''));
+      //const existing = parsed.filter((t: string) => !t.startsWith('NEW:'));
+      //const missing = parsed.filter((t: string) => t.startsWith('NEW:')).map((t: string) => t.replace('NEW:', ''));
 
-      skill.tools = getTools(existing);
-      updatedMap[name] = existing;
-      needsSave = true;
+      //skill.tools = getTools(existing);
+      //updatedMap[name] = existing;
+      //needsSave = true;
 
-      if (missing.length > 0) {
-        (skill as any)._missingTools = missing;
-      }
+      //if (missing.length > 0) {
+      //  (skill as any)._missingTools = missing;
+      //}
     } catch (err) {
       console.warn(`Failed to analyze "${name}", keeping all tools:`, err);
     }
