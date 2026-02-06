@@ -1,11 +1,16 @@
 // TODO: Invalidate when tool inventory changes
 // TODO: Re-analyze when SKILL.md content changes
 
-import { generateText } from 'ai';
-import type { Skill } from './types.js';
-import { loadConfig, resolveModelConfig } from '../config.js';
-import { getModel } from '../providers/index.js';
-import { getTools, listToolNames, getSkillToolMap, saveSkillToolMap } from '../tools/index.js';
+import { generateText } from "ai";
+import type { Skill } from "./types.js";
+import { loadConfig, resolveModelConfig } from "../config.js";
+import { getModel } from "../providers/index.js";
+import {
+  getTools,
+  listToolNames,
+  getSkillToolMap,
+  saveSkillToolMap,
+} from "../tools/index.js";
 
 /** Analyze skills and assign tools. Uses manifest cache when available. */
 export async function analyzeSkills(skills: Map<string, Skill>): Promise<void> {
@@ -20,14 +25,11 @@ export async function analyzeSkills(skills: Map<string, Skill>): Promise<void> {
       skill.tools = getTools(cached[name]);
       continue;
     }
-    console.log(name, 'needs analysis');
-    console.log(skill, "skills");
-    console.log(availableTools, "available tools");
 
     // No cache — ask LLM
     try {
       const config = loadConfig();
-      const model = getModel(resolveModelConfig('orchestrator', config));
+      const model = getModel(resolveModelConfig("orchestrator", config));
 
       const result = await generateText({
         model,
@@ -36,7 +38,7 @@ export async function analyzeSkills(skills: Map<string, Skill>): Promise<void> {
 Skill: ${name}
 ${skill.systemPrompt}
 
-Available tools: ${availableTools.join(', ')}
+Available tools: ${availableTools.join(", ")}
 
 Return: ["tool1", "tool2"]
 If a needed tool doesn't exist, prefix with "NEW:" like "NEW:toolName".`,

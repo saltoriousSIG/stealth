@@ -15,16 +15,12 @@ function loadSkill(name: string): Skill | null {
     if (!existsSync(mdPath)) return null;
 
     const content = readFileSync(mdPath, "utf-8");
-    console.log(content, "skill content");
     const config = loadConfig();
     const skillConfig = config.skills[name];
-    console.log(skillConfig, "skill config");
     const modelRef = skillConfig?.model || "local-fast";
-    console.log(modelRef, "model ref");
 
     // Default: all tools. Analyzer narrows this down later.
     const tools = getTools();
-    console.log(tools);
 
     // Parse description from ## Description header
     const descMatch = content.match(/^## Description\n(.+?)(?:\n##|\n\n|$)/ms);
