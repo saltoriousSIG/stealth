@@ -90,7 +90,8 @@ export class Orchestrator {
     addMessage({ role: 'user', content: userMessage });
 
     const config = loadConfig();
-    const model = getModel(resolveModelConfig('orchestrator', config));
+    const orchestratorModelConfig = resolveModelConfig('orchestrator', config);
+    const model = getModel(orchestratorModelConfig);
     const systemPrompt = buildSystemPrompt(this.identity, getSkillsSummary(this.skills));
 
     const context = await getConversationContext(userMessage);
@@ -141,7 +142,7 @@ export class Orchestrator {
         maxSteps: 5,
       });
 
-      recordUsage('orchestrator', 'openrouter', result.usage);
+      recordUsage('orchestrator', orchestratorModelConfig.provider, result.usage);
 
       const response = result.text || 'I was unable to generate a response.';
       addMessage({ role: 'assistant', content: response });
@@ -164,7 +165,8 @@ export class Orchestrator {
 
   async birthAgent(userDescription: string): Promise<string> {
     const config = loadConfig();
-    const model = getModel(resolveModelConfig('orchestrator', config));
+    const orchestratorModelConfig = resolveModelConfig('orchestrator', config);
+    const model = getModel(orchestratorModelConfig);
 
     const currentIdentity = this.identity;
     const birthPrompt = [
@@ -241,7 +243,7 @@ export class Orchestrator {
         maxSteps: 10,
       });
 
-      recordUsage('orchestrator', 'openrouter', result.usage);
+      recordUsage('orchestrator', orchestratorModelConfig.provider, result.usage);
 
       // Reload identity after birth updates
       this.identity = loadIdentity();
