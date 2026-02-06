@@ -1,3 +1,4 @@
+
 import 'dotenv/config';
 import * as readline from 'readline';
 import ora from 'ora';
@@ -18,14 +19,15 @@ function ask(rl: readline.Interface, prompt: string): Promise<string> {
 }
 
 async function main() {
-  const rl = createReadline();
+  let rl = createReadline();
   const orchestrator = new Orchestrator();
-
   loadConversation();
 
-  //const initSpinner = ora('Initializing...').start();
+  rl.close();
+  const initSpinner = ora('Initializing...').start();
   await orchestrator.init();
-  //initSpinner.succeed('Ready');
+  initSpinner.succeed('Ready');
+  rl = createReadline();
 
   console.log('Type your message, or /quit to exit.\n');
 
@@ -41,9 +43,12 @@ async function main() {
 
     if (!input.trim()) continue;
 
-    //const spinner = ora('Thinking...').start();
+    rl.close();
+    const spinner = ora('Thinking...').start();
     const response = await orchestrator.process(input);
-    //spinner.stop();
+    spinner.stop();
+    rl = createReadline();
+
     console.log(`\nJarvis: ${response}\n`);
   }
 }
