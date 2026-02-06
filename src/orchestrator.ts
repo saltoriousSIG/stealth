@@ -139,10 +139,11 @@ export class Orchestrator {
         system: systemPrompt,
         prompt,
         tools: orchestratorTools,
-        maxSteps: 5,
+        maxSteps: 10,
       });
 
       recordUsage('orchestrator', orchestratorModelConfig.provider, result.usage);
+      console.log(result)
 
       const response = result.text || 'I was unable to generate a response.';
       addMessage({ role: 'assistant', content: response });
