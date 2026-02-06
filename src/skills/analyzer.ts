@@ -47,7 +47,6 @@ YOU MUST ONLY RETURN THE JSON ARRAY AND NOTHING ELSE. YOU MUST FIND A TOOL FOR T
 
 YOU CANNOT RETURN AN EMPTY STRING
 `,
-        maxTokens: 256,
       });
       console.log(result);
       const parsed = JSON.parse(result.text.trim());
