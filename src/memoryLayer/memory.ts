@@ -11,6 +11,7 @@ const MEMORY_DIR = join(process.cwd(), 'memory');
 const CONVERSATION_FILE = join(MEMORY_DIR, 'conversation.json');
 
 let conversationHistory: Message[] = [];
+let sessionStartTime: Date = new Date();
 
 function ensureMemoryDir(): void {
   if (!existsSync(MEMORY_DIR)) {
@@ -23,6 +24,20 @@ export function addMessage(message: Message): void {
     ...message,
     timestamp: message.timestamp || new Date(),
   });
+  saveConversation();
+}
+
+export function getTurnCount(): number {
+  return conversationHistory.filter(m => m.role === 'user').length;
+}
+
+export function getLastMessageTime(): Date | null {
+  if (conversationHistory.length === 0) return null;
+  return conversationHistory[conversationHistory.length - 1].timestamp || null;
+}
+
+export function getSessionStartTime(): Date {
+  return sessionStartTime;
 }
 
 export function getConversationHistory(): Message[] {
