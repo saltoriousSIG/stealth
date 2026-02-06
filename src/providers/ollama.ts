@@ -59,3 +59,11 @@ export async function listOllamaModels(): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Gets an Ollama text embedding model by name
+ */
+export function getOllamaEmbeddingModel(modelName: string) {
+  const provider = getOllamaProvider();
+  return provider.textEmbeddingModel(modelName);
+}

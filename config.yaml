@@ -11,6 +11,9 @@ models:
   cloud-smart:
     provider: openrouter
     model: anthropic/claude-sonnet-4
+  embedding:
+    provider: ollama
+    model: nomic-embed-text-v2-moe
 
 skills:
   code:

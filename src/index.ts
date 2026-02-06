@@ -3,7 +3,7 @@ import 'dotenv/config';
 import * as readline from 'readline';
 import ora from 'ora';
 import { Orchestrator } from './orchestrator.js';
-import { loadConversation, saveConversation } from './memory.js';
+import { loadConversation, saveConversation } from './memoryLayer/index.js';
 import { header, bot, muted, dim, accent, prompt as promptStyle, success, error } from './utils/chalk.js';
 
 let rl: readline.Interface;

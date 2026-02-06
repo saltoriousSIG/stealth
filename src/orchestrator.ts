@@ -14,7 +14,7 @@ import { loadAllSkills, getSkillsSummary } from './skills/index.js';
 import { analyzeSkills } from './skills/analyzer.js';
 import { generateMissingTools } from './skills/generator.js';
 import { loadGeneratedTools } from './tools/index.js';
-import { addMessage, getRecentMessages } from './memory.js';
+import { addMessage, getConversationContext, initVectorMemory, storeConversationTurn, isVectorMemoryAvailable } from './memoryLayer/index.js';
 
 const IDENTITY_DIR = join(process.cwd(), 'src', 'identity');
 const BIRTH_MARKER = join(process.cwd(), 'memory', '.birth_complete');
@@ -36,6 +36,15 @@ function buildSystemPrompt(identity: Identity, skillsSummary: string): string {
     '1. If you can answer directly, use respondDirectly.',
     '2. If the task needs a specialist, use delegateToSkill with clear instructions.',
     '3. You may delegate multiple times for multi-step tasks.',
+    '4. Use updateIdentityFile to evolve your identity when appropriate.',
+    '',
+    '# Identity Evolution',
+    'You have the ability to update your own identity files. Use this thoughtfully:',
+    '- **SOUL.md**: Update when you discover personality traits, communication style, or core values that better fit your user.',
+    '- **BRAIN.md**: Update when you learn better reasoning patterns, delegation strategies, or thinking approaches.',
+    '- **IMPERATIVE.md**: Update when you learn user preferences, priorities, or life context that should shape your mission.',
+    'When updating, preserve the markdown structure and self-updating instructions within each file.',
+    'Always tell the user when you update an identity file (transparency).',
   ].join('\n');
 }
 
@@ -49,6 +58,7 @@ export class Orchestrator {
     this.skills = loadAllSkills();
     await analyzeSkills(this.skills);
     await generateMissingTools(this.skills);
+    await initVectorMemory().catch(() => {});
   }
 
   private async executeSkill(skillName: string, instructions: string): Promise<SkillResult> {
@@ -80,8 +90,7 @@ export class Orchestrator {
     const model = getModel(resolveModelConfig('orchestrator', config));
     const systemPrompt = buildSystemPrompt(this.identity, getSkillsSummary(this.skills));
 
-    const recent = getRecentMessages(6);
-    const historyStr = recent.map(m => `${m.role}: ${m.content}`).join('\n');
+    const context = await getConversationContext(userMessage);
 
     const orchestratorTools = {
       delegateToSkill: tool({
@@ -102,19 +111,40 @@ export class Orchestrator {
         }),
         execute: async ({ message }) => message,
       }),
+      updateIdentityFile: tool({
+        description: 'Update one of your identity files to reflect learned preferences, personality evolution, or new context',
+        parameters: z.object({
+          file: z.enum(['SOUL.md', 'BRAIN.md', 'IMPERATIVE.md']),
+          content: z.string().describe('Full new content. Preserve markdown structure and self-updating instructions.'),
+        }),
+        execute: async ({ file, content }) => {
+          const result = await this.executeSkill('files', `Write the following content to src/identity/${file}:\n\n${content}`);
+          if (result.success) this.identity = loadIdentity();
+          return result.success ? `Updated ${file} successfully.` : `Failed: ${result.error}`;
+        },
+      }),
     };
 
     try {
+      const prompt = context
+        ? `${context}\n\nUser: ${userMessage}`
+        : userMessage;
+
       const result = await generateText({
         model,
         system: systemPrompt,
-        prompt: historyStr ? `Recent conversation:\n${historyStr}\n\nUser: ${userMessage}` : userMessage,
+        prompt,
         tools: orchestratorTools,
         maxSteps: 5,
       });
 
       const response = result.text || 'I was unable to generate a response.';
       addMessage({ role: 'assistant', content: response });
+
+      if (isVectorMemoryAvailable()) {
+        await storeConversationTurn(userMessage, response).catch(() => {});
+      }
+
       return response;
     } catch (err) {
       const msg = `Error: ${err instanceof Error ? err.message : String(err)}`;
