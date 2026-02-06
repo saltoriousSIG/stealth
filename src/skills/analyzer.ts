@@ -41,7 +41,12 @@ ${skill.systemPrompt}
 Available tools: ${availableTools.join(", ")}
 
 Return: ["tool1", "tool2"]
-If a needed tool doesn't exist, prefix with "NEW:" like "NEW:toolName".`,
+If a needed tool doesn't exist, prefix with "NEW:" like "NEW:toolName".
+
+YOU MUST ONLY RETURN THE JSON ARRAY AND NOTHING ELSE. YOU MUST FIND A TOOL FOR THE SKILL OR CREATE A NEW ONE.
+
+YOU CANNOT RETURN AN EMPTY STRING
+`,
         maxTokens: 256,
       });
       console.log(result);
