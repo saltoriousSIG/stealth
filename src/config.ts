@@ -11,11 +11,17 @@ export interface SkillConfig {
   model: string;
 }
 
+export interface PricingConfig {
+  input: number;   // $ per million tokens
+  output: number;  // $ per million tokens
+}
+
 export interface Config {
   models: Record<string, ModelConfig>;
   skills: Record<string, SkillConfig>;
   keys: Record<string, string>;
   ollama: { host: string };
+  pricing: Record<string, PricingConfig>;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -34,6 +40,7 @@ const DEFAULT_CONFIG: Config = {
   ollama: {
     host: 'http://localhost:11434',
   },
+  pricing: {},
 };
 
 let cachedConfig: Config | null = null;
@@ -81,6 +88,7 @@ export function loadConfig(configPath?: string): Config {
       skills: { ...DEFAULT_CONFIG.skills, ...parsed.skills },
       keys: { ...DEFAULT_CONFIG.keys, ...parsed.keys },
       ollama: { ...DEFAULT_CONFIG.ollama, ...parsed.ollama },
+      pricing: { ...DEFAULT_CONFIG.pricing, ...parsed.pricing },
     };
 
     cachedConfig = interpolateConfig(cachedConfig);

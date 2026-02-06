@@ -1,6 +1,5 @@
 // TODO: Parallel skill execution for independent steps
 // TODO: Stream responses
-// TODO: Cost tracking
 
 import { generateText, tool } from 'ai';
 import { z } from 'zod';
@@ -15,6 +14,7 @@ import { analyzeSkills } from './skills/analyzer.js';
 import { generateMissingTools } from './skills/generator.js';
 import { loadGeneratedTools } from './tools/index.js';
 import { addMessage, getConversationContext, initVectorMemory, storeConversationTurn, isVectorMemoryAvailable } from './memoryLayer/index.js';
+import { recordUsage } from './costTracker.js';
 
 const IDENTITY_DIR = join(process.cwd(), 'src', 'identity');
 const BIRTH_MARKER = join(process.cwd(), 'memory', '.birth_complete');
@@ -67,7 +67,8 @@ export class Orchestrator {
 
     try {
       const config = loadConfig();
-      const model = getModel(resolveModelConfig(skill.modelRef, config));
+      const modelConfig = resolveModelConfig(skill.modelRef, config);
+      const model = getModel(modelConfig);
 
       const result = await generateText({
         model,
@@ -76,6 +77,8 @@ export class Orchestrator {
         tools: skill.tools,
         maxSteps: 10,
       });
+
+      recordUsage(skill.modelRef, modelConfig.provider, result.usage);
 
       return { success: true, response: result.text };
     } catch (err) {
@@ -137,6 +140,8 @@ export class Orchestrator {
         tools: orchestratorTools,
         maxSteps: 5,
       });
+
+      recordUsage('orchestrator', 'openrouter', result.usage);
 
       const response = result.text || 'I was unable to generate a response.';
       addMessage({ role: 'assistant', content: response });
@@ -235,6 +240,8 @@ export class Orchestrator {
         tools: birthTools,
         maxSteps: 10,
       });
+
+      recordUsage('orchestrator', 'openrouter', result.usage);
 
       // Reload identity after birth updates
       this.identity = loadIdentity();

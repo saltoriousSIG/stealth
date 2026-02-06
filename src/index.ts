@@ -5,6 +5,7 @@ import ora from 'ora';
 import { Orchestrator } from './orchestrator.js';
 import { loadConversation, saveConversation } from './memoryLayer/index.js';
 import { header, bot, muted, dim, accent, prompt as promptStyle, success, error } from './utils/chalk.js';
+import { getSessionCost, formatCost, getSessionSummary } from './costTracker.js';
 
 let rl: readline.Interface;
 
@@ -82,6 +83,8 @@ async function main() {
 
     if (input.trim().toLowerCase() === '/quit') {
       saveConversation();
+      const summary = getSessionSummary();
+      console.log(dim(`\n  ${summary.split('\n').join('\n  ')}`));
       console.log(dim('\n  Goodbye.\n'));
       rl.close();
       process.exit(0);
@@ -93,7 +96,9 @@ async function main() {
     const response = await orchestrator.process(input);
     stopSpin(spinner);
 
-    console.log(`\n${bot('Jarvis:')} ${response}\n`);
+    const cost = getSessionCost();
+    const costTag = cost > 0 ? dim(` [${formatCost(cost)}]`) : '';
+    console.log(`\n${bot('Jarvis:')} ${response}${costTag}\n`);
   }
 }
 
