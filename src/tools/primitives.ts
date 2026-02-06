@@ -11,20 +11,23 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, mkdirSy
 import { join, dirname } from 'path';
 
 export const executeCommand = tool({
-  description: 'Execute a shell command',
+  description: 'Execute a shell command. Returns stdout directly, with stderr and exit code appended only when non-empty/non-zero.',
   parameters: z.object({
     command: z.string().describe('Shell command to execute'),
     cwd: z.string().optional().describe('Working directory'),
     timeout: z.number().optional().describe('Timeout in ms (default 30000)'),
   }),
   execute: async ({ command, cwd, timeout = 30000 }) => {
-    return new Promise<{ exitCode: number; stdout: string; stderr: string }>((resolve) => {
+    return new Promise<string>((resolve) => {
       exec(command, { cwd: cwd || process.cwd(), timeout }, (error, stdout, stderr) => {
-        resolve({
-          exitCode: error?.code ?? (error ? 1 : 0),
-          stdout: stdout.trim(),
-          stderr: stderr.trim(),
-        });
+        const out = stdout.trim();
+        const err = stderr.trim();
+        const exitCode = error?.code ?? (error ? 1 : 0);
+        const parts: string[] = [];
+        if (out) parts.push(out);
+        if (err) parts.push(`[stderr] ${err}`);
+        if (exitCode !== 0) parts.push(`[exit code: ${exitCode}]`);
+        resolve(parts.join('\n') || '(no output)');
       });
     });
   },
@@ -41,7 +44,7 @@ export const readFile = tool({
 });
 
 export const writeFile = tool({
-  description: 'Write content to a file',
+  description: 'Write content to a file. Returns confirmation with path and bytes written.',
   parameters: z.object({
     path: z.string().describe('File path'),
     content: z.string().describe('Content to write'),
@@ -51,19 +54,23 @@ export const writeFile = tool({
     const dir = dirname(abs);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(abs, content, 'utf-8');
-    return { path, bytesWritten: content.length };
+    return `Wrote ${content.length} bytes to ${path}`;
   },
 });
 
 export const listDirectory = tool({
-  description: 'List directory contents',
+  description: 'List directory contents. Returns a formatted listing with type indicators.',
   parameters: z.object({ path: z.string().optional().describe('Directory (default: cwd)') }),
   execute: async ({ path = '.' }) => {
     const abs = join(process.cwd(), path);
     if (!existsSync(abs)) throw new Error(`Not found: ${path}`);
-    return readdirSync(abs)
+    const entries = readdirSync(abs)
       .filter(f => !f.startsWith('.') && f !== 'node_modules')
-      .map(name => ({ name, type: statSync(join(abs, name)).isDirectory() ? 'dir' : 'file' }));
+      .map(name => {
+        const type = statSync(join(abs, name)).isDirectory() ? 'dir' : 'file';
+        return `[${type}] ${name}`;
+      });
+    return entries.join('\n') || '(empty directory)';
   },
 });
 
