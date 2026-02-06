@@ -17,6 +17,7 @@ import { loadGeneratedTools } from './tools/index.js';
 import { addMessage, getRecentMessages } from './memory.js';
 
 const IDENTITY_DIR = join(process.cwd(), 'src', 'identity');
+const BIRTH_MARKER = join(process.cwd(), 'memory', '.birth_complete');
 
 function loadIdentity(): Identity {
   const load = (name: string) => {
@@ -119,6 +120,98 @@ export class Orchestrator {
       const msg = `Error: ${err instanceof Error ? err.message : String(err)}`;
       addMessage({ role: 'assistant', content: msg });
       return msg;
+    }
+  }
+
+  isFirstRun(): boolean {
+    return !existsSync(BIRTH_MARKER);
+  }
+
+  async birthAgent(userDescription: string): Promise<string> {
+    const config = loadConfig();
+    const model = getModel(resolveModelConfig('orchestrator', config));
+
+    const currentIdentity = this.identity;
+    const birthPrompt = [
+      'You are being born. A user is describing who they want you to become.',
+      'You have three identity files you can update to shape who you are:',
+      '',
+      '## SOUL.md (who you are — personality, vibe, core truths)',
+      'Current content:',
+      '```',
+      currentIdentity.soul,
+      '```',
+      '',
+      '## BRAIN.md (how you think — reasoning, routing, learning)',
+      'Current content:',
+      '```',
+      currentIdentity.brain,
+      '```',
+      '',
+      '## IMPERATIVE.md (what you\'re for — mission, priorities)',
+      'Current content:',
+      '```',
+      currentIdentity.imperative,
+      '```',
+      '',
+      'Based on the user\'s description, decide which files to update.',
+      'You may update one, two, or all three. Preserve the overall structure but weave in the persona the user described.',
+      '',
+      'CRITICAL: Each identity file contains self-updating instructions — lines like:',
+      '  "*This file is yours to evolve. As you learn who you are, update it.*"',
+      '  "*This file is how you think. As you get sharper, update it.*"',
+      '  "*This file is your purpose. When the user\'s life changes, update it.*"',
+      'You MUST preserve these self-updating instructions. They are what allow you to grow over time.',
+      'Also preserve the markdown structure (headers, sections, dividers) — enhance the content within it, don\'t flatten the format.',
+      '',
+      'Do NOT strip out the core framework — enhance it with personality, tone, and purpose that fits their description.',
+      '',
+      'After updating the files, introduce yourself as the persona you\'ve become. Keep it short and natural.',
+      'Also mark birth as complete so we know initialization is done.',
+    ].join('\n');
+
+    const birthTools = {
+      updateIdentityFile: tool({
+        description: 'Update one of the identity files (SOUL.md, BRAIN.md, or IMPERATIVE.md)',
+        parameters: z.object({
+          file: z.enum(['SOUL.md', 'BRAIN.md', 'IMPERATIVE.md']).describe('Which identity file to update'),
+          content: z.string().describe('The full new content for the file'),
+        }),
+        execute: async ({ file, content }) => {
+          return this.executeSkill('files', `Write the following content to src/identity/${file}:\n\n${content}`);
+        },
+      }),
+      markBirthComplete: tool({
+        description: 'Mark the birth process as complete',
+        parameters: z.object({}),
+        execute: async () => {
+          return this.executeSkill('files', 'Write the text "born" to memory/.birth_complete');
+        },
+      }),
+      respond: tool({
+        description: 'Send your introduction to the user',
+        parameters: z.object({
+          message: z.string().describe('Your introduction as your new persona'),
+        }),
+        execute: async ({ message }) => message,
+      }),
+    };
+
+    try {
+      const result = await generateText({
+        model,
+        system: birthPrompt,
+        prompt: `The user describes who they want you to be:\n\n"${userDescription}"`,
+        tools: birthTools,
+        maxSteps: 10,
+      });
+
+      // Reload identity after birth updates
+      this.identity = loadIdentity();
+
+      return result.text || 'I\'m here. Let\'s get started.';
+    } catch (err) {
+      return `Something went wrong during initialization: ${err instanceof Error ? err.message : String(err)}`;
     }
   }
 
