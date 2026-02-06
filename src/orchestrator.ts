@@ -80,7 +80,26 @@ export class Orchestrator {
 
       recordUsage(skill.modelRef, modelConfig.provider, result.usage);
 
-      return { success: true, response: result.text };
+      // Build full execution log so orchestrator sees what actually happened
+      const stepLog: string[] = [];
+      for (const step of result.steps) {
+        const calls = step.toolCalls as Array<{ toolName: string; args: unknown }>;
+        const results = step.toolResults as Array<{ result: unknown }>;
+        for (let i = 0; i < calls.length; i++) {
+          const call = calls[i];
+          const tr = results[i];
+          stepLog.push(`[${call.toolName}] args: ${JSON.stringify(call.args)}`);
+          if (tr) {
+            stepLog.push(`→ result: ${typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result)}`);
+          }
+        }
+        if (step.text) {
+          stepLog.push(step.text);
+        }
+      }
+
+      const response = result.text || stepLog.join('\n') || 'Skill executed but produced no output.';
+      return { success: true, response };
     } catch (err) {
       return { success: false, response: '', error: err instanceof Error ? err.message : String(err) };
     }
