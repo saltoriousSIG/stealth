@@ -1,58 +1,70 @@
 // TODO: Hot-reload skills on SKILL.md change
 // TODO: Skill enable/disable
 
-import { readFileSync, readdirSync, existsSync, statSync } from 'fs';
-import { join } from 'path';
-import type { Skill } from './types.js';
-import { loadConfig } from '../config.js';
-import { getTools } from '../tools/index.js';
+import { readFileSync, readdirSync, existsSync, statSync } from "fs";
+import { join } from "path";
+import type { Skill } from "./types.js";
+import { loadConfig } from "../config.js";
+import { getTools } from "../tools/index.js";
 
-const SKILLS_DIR = join(process.cwd(), 'skills');
+const SKILLS_DIR = join(process.cwd(), "skills");
 
 function loadSkill(name: string): Skill | null {
-  const mdPath = join(SKILLS_DIR, name, 'SKILL.md');
-  if (!existsSync(mdPath)) return null;
+  try {
+    const mdPath = join(SKILLS_DIR, name, "SKILL.md");
+    if (!existsSync(mdPath)) return null;
 
-  const content = readFileSync(mdPath, 'utf-8');
-  console.log(content, "skill content");
-  const config = loadConfig();
-  const skillConfig = config.skills[name];
-  console.log(skillConfig, "skill config");
-  const modelRef = skillConfig?.model || 'local-fast';
-  console.log(modelRef, "model ref");
+    const content = readFileSync(mdPath, "utf-8");
+    console.log(content, "skill content");
+    const config = loadConfig();
+    const skillConfig = config.skills[name];
+    console.log(skillConfig, "skill config");
+    const modelRef = skillConfig?.model || "local-fast";
+    console.log(modelRef, "model ref");
 
-  // Default: all tools. Analyzer narrows this down later.
-  const tools = getTools();
-  console.log(tools)
+    // Default: all tools. Analyzer narrows this down later.
+    const tools = getTools();
+    console.log(tools);
 
-  // Parse description from ## Description header
-  const descMatch = content.match(/^## Description\n(.+?)(?:\n##|\n\n|$)/ms);
-  const description = descMatch?.[1]?.trim() || name;
+    // Parse description from ## Description header
+    const descMatch = content.match(/^## Description\n(.+?)(?:\n##|\n\n|$)/ms);
+    const description = descMatch?.[1]?.trim() || name;
 
-  return { name, description, modelRef, systemPrompt: content, tools };
+    return { name, description, modelRef, systemPrompt: content, tools };
+  } catch (e: any) {
+    console.log(e, e.message);
+    return null;
+  }
 }
 
 export function loadAllSkills(): Map<string, Skill> {
-  const skills = new Map<string, Skill>();
-  if (!existsSync(SKILLS_DIR)) return skills;
+  try {
+    const skills = new Map<string, Skill>();
+    if (!existsSync(SKILLS_DIR)) return skills;
 
-  for (const entry of readdirSync(SKILLS_DIR)) {
-    const full = join(SKILLS_DIR, entry);
-    if (!statSync(full).isDirectory()) continue;
-    console.log(entry)
-    const skill = loadSkill(entry);
-    if (skill) skills.set(skill.name, skill);
+    for (const entry of readdirSync(SKILLS_DIR)) {
+      const full = join(SKILLS_DIR, entry);
+      if (!statSync(full).isDirectory()) continue;
+      console.log(entry);
+      const skill = loadSkill(entry);
+      if (skill) skills.set(skill.name, skill);
+    }
+    return skills;
+  } catch (e: any) {
+    console.log(e, e.message);
+    return new Map<string, Skill>();
   }
-  return skills;
 }
 
 /** Concise summary for orchestrator context */
 export function getSkillsSummary(skills: Map<string, Skill>): string {
-  if (skills.size === 0) return 'No skills available.';
+  if (skills.size === 0) return "No skills available.";
   const lines: string[] = [];
   for (const [name, skill] of skills) {
-    const toolNames = Object.keys(skill.tools).join(', ');
-    lines.push(`- ${name} (model: ${skill.modelRef}): ${skill.description || name} [tools: ${toolNames}]`);
+    const toolNames = Object.keys(skill.tools).join(", ");
+    lines.push(
+      `- ${name} (model: ${skill.modelRef}): ${skill.description || name} [tools: ${toolNames}]`
+    );
   }
-  return lines.join('\n');
+  return lines.join("\n");
 }
