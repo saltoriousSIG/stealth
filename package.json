@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.ts",
+  "bin": {
+    "jarvis": "./bin/jarvis.mjs"
+  },
   "scripts": {
     "jarvis": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build"
   },
   "keywords": [
     "ai",
