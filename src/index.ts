@@ -6,20 +6,37 @@ import { Orchestrator } from './orchestrator.js';
 import { loadConversation, saveConversation } from './memory.js';
 import { header, bot, muted, dim, accent, prompt as promptStyle, success, error } from './utils/chalk.js';
 
+let rl: readline.Interface;
+
 function createReadline(): readline.Interface {
-  return readline.createInterface({
+  rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
+  return rl;
 }
 
-function ask(rl: readline.Interface, prompt: string): Promise<string> {
+function ask(prompt: string): Promise<string> {
   return new Promise((resolve) => {
     rl.question(prompt, (answer) => resolve(answer));
   });
 }
 
-async function runBirth(rl: readline.Interface, orchestrator: Orchestrator): Promise<void> {
+function spin(text: string): ReturnType<typeof ora> {
+  rl.pause();
+  return ora({ text, spinner: 'dots', stream: process.stderr }).start();
+}
+
+function stopSpin(spinner: ReturnType<typeof ora>, succeedText?: string): void {
+  if (succeedText) {
+    spinner.succeed(succeedText);
+  } else {
+    spinner.stop();
+  }
+  rl.resume();
+}
+
+async function runBirth(orchestrator: Orchestrator): Promise<void> {
   console.log();
   console.log(header('  First time? Let\'s get you set up.'));
   console.log();
@@ -27,38 +44,33 @@ async function runBirth(rl: readline.Interface, orchestrator: Orchestrator): Pro
   console.log(dim('  I\'ll shape myself around what you tell me.'));
   console.log();
 
-  const description = await ask(rl, promptStyle('  > '));
+  const description = await ask(promptStyle('  > '));
 
   if (!description.trim()) {
     console.log(muted('\n  No description given. Using defaults.\n'));
     return;
   }
 
-  rl.close();
-  const spinner = ora({ text: accent('Becoming...'), spinner: 'dots' }).start();
+  const spinner = spin(accent('Becoming...'));
   const greeting = await orchestrator.birthAgent(description);
-  spinner.stop();
-  rl = createReadline();
+  stopSpin(spinner);
 
   console.log();
-  console.log(bot(`  ${greeting}`));
+  console.log(`  ${bot(greeting)}`);
   console.log();
 }
 
 async function main() {
-  let rl = createReadline();
+  createReadline();
   const orchestrator = new Orchestrator();
   loadConversation();
 
-  rl.close();
-  const initSpinner = ora({ text: dim('Initializing...'), spinner: 'dots' }).start();
+  const initSpinner = spin(dim('Initializing...'));
   await orchestrator.init();
-  initSpinner.succeed(success('Ready'));
-  rl = createReadline();
+  stopSpin(initSpinner, success('Ready'));
 
   if (orchestrator.isFirstRun()) {
-    await runBirth(rl, orchestrator);
-    rl = createReadline();
+    await runBirth(orchestrator);
   } else {
     console.log(dim('\n  Welcome back.\n'));
   }
@@ -66,7 +78,7 @@ async function main() {
   console.log(muted('  Type your message, or /quit to exit.\n'));
 
   while (true) {
-    const input = await ask(rl, promptStyle('You: '));
+    const input = await ask(promptStyle('You: '));
 
     if (input.trim().toLowerCase() === '/quit') {
       saveConversation();
@@ -77,11 +89,9 @@ async function main() {
 
     if (!input.trim()) continue;
 
-    rl.close();
-    const spinner = ora({ text: accent('Thinking...'), spinner: 'dots' }).start();
+    const spinner = spin(accent('Thinking...'));
     const response = await orchestrator.process(input);
-    spinner.stop();
-    rl = createReadline();
+    stopSpin(spinner);
 
     console.log(`\n${bot('Jarvis:')} ${response}\n`);
   }
