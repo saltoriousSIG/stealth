@@ -42,7 +42,7 @@ Return: ["tool1", "tool2"]
 If a needed tool doesn't exist, prefix with "NEW:" like "NEW:toolName".`,
         maxTokens: 256,
       });
-      console.log(results);
+      console.log(result);
 
       const parsed = JSON.parse(result.text.trim());
       if (!Array.isArray(parsed)) continue;
