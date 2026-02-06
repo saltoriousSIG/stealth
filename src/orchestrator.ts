@@ -98,7 +98,16 @@ export class Orchestrator {
         }
       }
 
-      const response = result.text || stepLog.join('\n') || 'Skill executed but produced no output.';
+      // Always include execution log so orchestrator sees actual tool results.
+      // Skill text summaries supplement but never replace real stdout/stderr data.
+      const parts: string[] = [];
+      if (stepLog.length > 0) {
+        parts.push('## Execution Log\n' + stepLog.join('\n'));
+      }
+      if (result.text) {
+        parts.push('## Skill Summary\n' + result.text);
+      }
+      const response = parts.join('\n\n') || 'Skill executed but produced no output.';
       return { success: true, response };
     } catch (err) {
       return { success: false, response: '', error: err instanceof Error ? err.message : String(err) };
