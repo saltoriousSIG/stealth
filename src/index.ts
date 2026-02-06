@@ -23,9 +23,9 @@ async function main() {
 
   loadConversation();
 
-  const initSpinner = ora('Initializing...').start();
+  //const initSpinner = ora('Initializing...').start();
   await orchestrator.init();
-  initSpinner.succeed('Ready');
+  //initSpinner.succeed('Ready');
 
   console.log('Type your message, or /quit to exit.\n');
 
@@ -41,9 +41,9 @@ async function main() {
 
     if (!input.trim()) continue;
 
-    const spinner = ora('Thinking...').start();
+    //const spinner = ora('Thinking...').start();
     const response = await orchestrator.process(input);
-    spinner.stop();
+    //spinner.stop();
     console.log(`\nJarvis: ${response}\n`);
   }
 }
