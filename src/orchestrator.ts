@@ -139,7 +139,7 @@ export class Orchestrator {
         system: systemPrompt,
         prompt,
         tools: orchestratorTools,
-        maxSteps: 10,
+        maxSteps: 30,
       });
 
       recordUsage('orchestrator', orchestratorModelConfig.provider, result.usage);
