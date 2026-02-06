@@ -1,33 +1,19 @@
-# Code Skill
+# Code
 
-Expert code editing, generation, and analysis. Handles all programming tasks including writing new code, refactoring existing code, debugging issues, and explaining code behavior.
+## Description
+Code generation, editing, debugging, and analysis.
 
-## Triggers
+## Instructions
+1. Read relevant files to understand context
+2. Plan before writing
+3. Write or modify code
+4. Validate if possible (syntax, tests)
+5. Explain what you did concisely
 
-- Write code
-- Edit code
-- Fix bug
-- Refactor
-- Generate function
-- Code review
-- Explain code
+## Usage
+Use for any programming task: writing new code, refactoring, fixing bugs, code review, explaining behavior.
 
-## Model
+## Technical Implementation
+Uses readFile/writeFile for source code. Can use executeCommand to run programs, tests, linters, or compilers to validate written code.
 
-Uses: local-code
-
-## Tools
-
-- readFile
-- writeFile
-- listDirectory
-- executeCommand
-
-## Execution Pattern
-
-1. Understand the coding task and requirements
-2. Read relevant existing code files if needed
-3. Plan the implementation approach
-4. Write or modify code as needed
-5. Validate changes if possible (e.g., syntax check)
-6. Explain what was done and any important details
+## References

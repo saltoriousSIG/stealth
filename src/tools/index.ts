@@ -1,116 +1,86 @@
-import type { Tool } from '../types.js';
-import { fileTools, readFileTool, writeFileTool, listDirectoryTool } from './files.js';
-import { shellTools, executeCommandTool, executeCommand } from './shell.js';
-import { modelTools, callModelTool, callModel } from './models.js';
+// TODO: Tool usage telemetry
+// TODO: Tool validation on load
 
-// Re-export individual tools
-export {
-  readFileTool,
-  writeFileTool,
-  listDirectoryTool,
-  executeCommandTool,
-  executeCommand,
-  callModelTool,
-  callModel,
-};
+import type { Tool } from 'ai';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+import * as primitives from './primitives.js';
 
-// All core tools combined
-export const coreTools: Tool[] = [...fileTools, ...shellTools, ...modelTools];
+const TOOLS_DIR = fileURLToPath(new URL('.', import.meta.url));
+const MANIFEST_PATH = join(TOOLS_DIR, 'manifest.json');
 
-// Tool registry for easy lookup
-const toolRegistry = new Map<string, Tool>();
-
-// Register all core tools
-for (const tool of coreTools) {
-  toolRegistry.set(tool.name, tool);
+interface Manifest {
+  toolFiles: string[];
+  skillToolMap: Record<string, string[]>;
 }
 
-/**
- * Gets a tool by name
- */
-export function getTool(name: string): Tool | undefined {
-  return toolRegistry.get(name);
+const registry: Record<string, Tool> = {};
+
+// Always load primitives directly
+for (const [name, val] of Object.entries(primitives)) {
+  registry[name] = val;
 }
 
-/**
- * Gets multiple tools by name
- */
-export function getTools(names: string[]): Tool[] {
-  const tools: Tool[] = [];
-  for (const name of names) {
-    const tool = toolRegistry.get(name);
-    if (tool) {
-      tools.push(tool);
+function readManifest(): Manifest {
+  if (!existsSync(MANIFEST_PATH)) return { toolFiles: ['primitives'], skillToolMap: {} };
+  return JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8'));
+}
+
+function writeManifest(manifest: Manifest): void {
+  writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2), 'utf-8');
+}
+
+/** Load generated tool files listed in manifest */
+export async function loadGeneratedTools(): Promise<void> {
+  const manifest = readManifest();
+  for (const name of manifest.toolFiles) {
+    if (name === 'primitives') continue;
+    try {
+      const mod = await import(`./${name}.js`);
+      for (const [key, value] of Object.entries(mod)) {
+        if (key !== 'default') registry[key] = value as Tool;
+      }
+    } catch (err) {
+      console.warn(`Failed to load tool module "${name}":`, err);
     }
   }
-  return tools;
 }
 
-/**
- * Registers a custom tool
- */
-export function registerTool(tool: Tool): void {
-  toolRegistry.set(tool.name, tool);
-}
-
-/**
- * Registers multiple custom tools
- */
-export function registerTools(tools: Tool[]): void {
-  for (const tool of tools) {
-    registerTool(tool);
+/** Add a generated tool file to the manifest */
+export function addToolFile(name: string): void {
+  const manifest = readManifest();
+  if (!manifest.toolFiles.includes(name)) {
+    manifest.toolFiles.push(name);
+    writeManifest(manifest);
   }
 }
 
-/**
- * Gets all registered tool names
- */
-export function getToolNames(): string[] {
-  return Array.from(toolRegistry.keys());
+/** Get the cached skill→tool mapping */
+export function getSkillToolMap(): Record<string, string[]> {
+  return readManifest().skillToolMap;
 }
 
-/**
- * Gets all registered tools
- */
-export function getAllTools(): Tool[] {
-  return Array.from(toolRegistry.values());
+/** Save the skill→tool mapping to manifest */
+export function saveSkillToolMap(map: Record<string, string[]>): void {
+  const manifest = readManifest();
+  manifest.skillToolMap = map;
+  writeManifest(manifest);
 }
 
-/**
- * Converts tools to the Vercel AI SDK tool format
- */
-export function toAISDKTools(tools: Tool[]): Record<string, {
-  description: string;
-  parameters: {
-    type: 'object';
-    properties: Record<string, { type: string; description: string }>;
-    required?: string[];
-  };
-  execute: (params: Record<string, unknown>) => Promise<unknown>;
-}> {
-  const result: Record<string, {
-    description: string;
-    parameters: {
-      type: 'object';
-      properties: Record<string, { type: string; description: string }>;
-      required?: string[];
-    };
-    execute: (params: Record<string, unknown>) => Promise<unknown>;
-  }> = {};
-
-  for (const tool of tools) {
-    result[tool.name] = {
-      description: tool.description,
-      parameters: tool.parameters,
-      execute: async (params) => {
-        const toolResult = await tool.execute(params);
-        if (!toolResult.success) {
-          throw new Error(toolResult.error || 'Tool execution failed');
-        }
-        return toolResult.data;
-      },
-    };
+export function getTools(names?: string[]): Record<string, Tool> {
+  if (!names || names.length === 0) return { ...registry };
+  const result: Record<string, Tool> = {};
+  for (const name of names) {
+    if (registry[name]) result[name] = registry[name];
   }
-
   return result;
+}
+
+export function registerTool(name: string, tool: Tool): void {
+  registry[name] = tool;
+}
+
+export function listToolNames(): string[] {
+  return Object.keys(registry);
 }

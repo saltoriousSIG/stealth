@@ -1,0 +1,108 @@
+// TODO: Command allowlist/blocklist for safety
+// TODO: Glob/search tool
+// TODO: Better HTML-to-text (use a library)
+// TODO: Rate limiting for web tools
+// TODO: Binary file detection
+
+import { tool } from 'ai';
+import { z } from 'zod';
+import { exec } from 'child_process';
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+
+export const executeCommand = tool({
+  description: 'Execute a shell command',
+  parameters: z.object({
+    command: z.string().describe('Shell command to execute'),
+    cwd: z.string().optional().describe('Working directory'),
+    timeout: z.number().optional().describe('Timeout in ms (default 30000)'),
+  }),
+  execute: async ({ command, cwd, timeout = 30000 }) => {
+    return new Promise<{ exitCode: number; stdout: string; stderr: string }>((resolve) => {
+      exec(command, { cwd: cwd || process.cwd(), timeout }, (error, stdout, stderr) => {
+        resolve({
+          exitCode: error?.code ?? (error ? 1 : 0),
+          stdout: stdout.trim(),
+          stderr: stderr.trim(),
+        });
+      });
+    });
+  },
+});
+
+export const readFile = tool({
+  description: 'Read file contents',
+  parameters: z.object({ path: z.string().describe('File path') }),
+  execute: async ({ path }) => {
+    const abs = join(process.cwd(), path);
+    if (!existsSync(abs)) throw new Error(`Not found: ${path}`);
+    return readFileSync(abs, 'utf-8');
+  },
+});
+
+export const writeFile = tool({
+  description: 'Write content to a file',
+  parameters: z.object({
+    path: z.string().describe('File path'),
+    content: z.string().describe('Content to write'),
+  }),
+  execute: async ({ path, content }) => {
+    const abs = join(process.cwd(), path);
+    const dir = dirname(abs);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(abs, content, 'utf-8');
+    return { path, bytesWritten: content.length };
+  },
+});
+
+export const listDirectory = tool({
+  description: 'List directory contents',
+  parameters: z.object({ path: z.string().optional().describe('Directory (default: cwd)') }),
+  execute: async ({ path = '.' }) => {
+    const abs = join(process.cwd(), path);
+    if (!existsSync(abs)) throw new Error(`Not found: ${path}`);
+    return readdirSync(abs)
+      .filter(f => !f.startsWith('.') && f !== 'node_modules')
+      .map(name => ({ name, type: statSync(join(abs, name)).isDirectory() ? 'dir' : 'file' }));
+  },
+});
+
+export const webSearch = tool({
+  description: 'Search the web using Tavily',
+  parameters: z.object({
+    query: z.string().describe('Search query'),
+    maxResults: z.number().optional().describe('Max results (default 5)'),
+  }),
+  execute: async ({ query, maxResults = 5 }) => {
+    const apiKey = process.env.TAVILY_API_KEY;
+    if (!apiKey) throw new Error('TAVILY_API_KEY not set');
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, query, max_results: maxResults }),
+    });
+    if (!res.ok) throw new Error(`Tavily error: ${res.status}`);
+    const data = await res.json() as { results: Array<{ title: string; url: string; content: string }> };
+    return data.results.map(r => ({ title: r.title, url: r.url, snippet: r.content }));
+  },
+});
+
+export const fetchPage = tool({
+  description: 'Fetch readable content from a URL',
+  parameters: z.object({ url: z.string().describe('URL to fetch') }),
+  execute: async ({ url }) => {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Jarvis-Agent/1.0' } });
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    const html = await res.text();
+    return {
+      url,
+      content: html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 10000),
+    };
+  },
+});

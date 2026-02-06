@@ -1,30 +1,19 @@
-# Shell Skill
+# Shell
 
-Execute shell commands and manage system operations. Handles command execution, package management, process monitoring, and system administration tasks.
+## Description
+Execute shell commands and control the machine. This is the agent's primary interface to the operating system.
 
-## Triggers
+## Instructions
+1. Understand what the user is trying to accomplish
+2. Construct the appropriate command(s)
+3. Execute and capture output
+4. Parse results and report clearly
+5. Chain commands if multi-step operations are needed
 
-- Run command
-- Execute
-- Install package
-- Check status
-- List processes
-- System info
+## Usage
+Use for anything that involves the OS: running programs, installing packages, managing processes, file system operations beyond basic read/write, networking, Docker, git, system monitoring, automation scripts.
 
-## Model
+## Technical Implementation
+Uses exec to run shell commands with configurable timeout and working directory. Commands run via the system shell. Can chain multiple commands, pipe output, and handle exit codes.
 
-Uses: local-fast
-
-## Tools
-
-- executeCommand
-- readFile
-- listDirectory
-
-## Execution Pattern
-
-1. Understand what command or operation is needed
-2. Validate the command is safe to execute
-3. Execute the command with appropriate timeout
-4. Parse and summarize the output
-5. Report results or errors clearly
+## References
