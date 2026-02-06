@@ -36,6 +36,7 @@ export function loadAllSkills(): Map<string, Skill> {
     const full = join(SKILLS_DIR, entry);
     if (!statSync(full).isDirectory()) continue;
     const skill = loadSkill(entry);
+    console.log(skill);
     if (skill) skills.set(skill.name, skill);
   }
   return skills;

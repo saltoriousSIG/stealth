@@ -20,6 +20,9 @@ export async function analyzeSkills(skills: Map<string, Skill>): Promise<void> {
       skill.tools = getTools(cached[name]);
       continue;
     }
+    console.log(name, 'needs analysis');
+    console.log(skill, "skills");
+    console.log(availableTools, "available tools");
 
     // No cache — ask LLM
     try {
